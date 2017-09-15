@@ -17,73 +17,77 @@ var connector = new botbuilder.ChatConnector({
 server.post('/api/messages', connector.listen());
 
 // reply by echoing
+var sessionAddress;
+
 var bot = new botbuilder.UniversalBot(connector, function(session){
-   
-    session.send(`Vous avez dit ${session.message.text}`)
-    
-    bot.on('typing',function(){
-        var customMessage = "Ah ouais ?.."
-        session.send(customMessage)
-    })   
-    
-    bot.on('endOfConversation',function(){
-        var customMessage = "C'est la fin..."
-        session.send(customMessage)
-    })   
-
-    bot.on('conversationUpdate', function(message) {
-        if (message.membersAdded && message.membersAdded.length > 0) {
-            var membersAdded = message.membersAdded
-            .map(function (x) {
-                var isSelf =x.id === message.address.bot.id;
-                return (isSelf ? message.address.bot.name : x.name) || '' + ' (Id: ' + x.id + ')';
-            })
-            .join(', ');
-            
-            customMessage = 'Bienvenue ' + member
-        }
-
-        if (message.membersRemoved && message.membersRemoved.length > 0) {
-            var membersRemoved = message.membersRemoved
-            .map(function (x) {
-                var isSelf = x.id === message.address.bot.id;
-                return (isSelf ? message.address.bot.name : x.name) || '' + ' (Id: ' + x.id + ')';
-            })
-            .join(', ');
-
-            customMessage = 'L\'utilisateur ' + member + 'a été supprimé'
-        }
-
-        if (message.MembersAdded != null && message.MembersAdded.Any()) {
-            // foreach (var newMember in update.MembersAdded) {
-            //     if (newMember.Id != message.Recipient.Id) {
-            //         var reply = message.CreateReply();
-            //         reply.Text = $"Welcome {newMember.Name}!";
-            //         client.Conversations.ReplyToActivityAsync(reply);
-            //     }
-            // }
-            session.send('a')
-        }
-
-        var reply = new builder.Message(session)
-            .address(message.address)
-            .text(customMessage)
-        bot.send(reply);
-        
-    });
-
-    bot.on('contactRelationUpdate', function(message) {
-        if (message.action === 'add') {
-            var name = message.user ? message.user.name : null;
-            customMessage = 'Coucou %s... Merci de m\'avoir ajouté.'
-        } else {
-            customMessage = 'Ah.. Bye'
-        }
-
-        var reply = new builder.Message()
-            .address(message.address)
-            .text("", name);
-        bot.send(reply);
-    });
-
+    sessionAddress = session.message.address;
+    session.send(`Vous avez dit ${session.message.text}`);
 });
+
+bot.on('typing', function(){
+    var customMessage = 'Ah ouais ?..'
+    bot.send(new botbuilder.Message()
+        .address(sessionAddress)
+        .text(customMessage));
+});
+
+bot.on('conversationUpdate', function(message){
+    savedAddress = message.address;
+    
+    if (message.membersAdded && message.membersAdded.length > 0) {
+        var membersAdded = message.membersAdded
+        .map(function (x) {
+            var isSelf = x.id === message.address.bot.id;
+            return (isSelf ? message.address.bot.name : x.name + ' (Id: ' + x.id + ')');
+        })
+        .join(', ');
+        bot.beginDialog(message.address, '/first');    
+        customMessage = 'Bienvenue ' + membersAdded
+    }
+
+    if (message.membersRemoved && message.membersRemoved.length > 0) {
+        var membersRemoved = message.membersRemoved
+        .map(function (x) {
+            var isSelf = x.id === message.address.bot.id;
+            return (isSelf ? message.address.bot.name : x.name) || '' + ' (Id: ' + x.id + ')';
+        })
+        .join(', ');
+
+        customMessage = 'L\'utilisateur ' + membersRemoved + ' a été supprimé ou a quitté la conversation'
+    }
+
+    bot.send(new botbuilder.Message()
+       .address(message.address)
+       .text(customMessage));
+});
+
+bot.on('contactRelationUpdate', function(message){
+    var bot_identity = message.address.bot.name + ' (Id: ' + message.address.bot.id + bot.dialog('/first', [
+        (session) => {
+            botbuilder.Prompts.text(session, 'Avez-vous une question ?');
+        },
+        (session, results) => {
+            session.send('Je ne suis pas encore assez intélligent pour répondre à cette question :( ');
+        }
+    ]);')';
+    if(message.action && message.action === 'add') {
+        customMessage = `Bienvenue ${bot_identity}`;
+    }
+
+    if(message.action && message.action === 'remove') {
+        customMessage = `Au revoir ${bot_identity}`
+    }
+
+    bot.send(new botbuilder.Message()
+       .address(message.address)
+       .text(customMessage));
+});
+
+bot.dialog('/first', [
+    (session) => {
+        botbuilder.Prompts.text(session, 'Avez-vous une question ?');
+    },
+    (session, results) => {
+        session.send('Je ne suis pas encore assez intélligent pour répondre à cette question :( ');
+    }
+]);
