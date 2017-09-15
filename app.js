@@ -17,7 +17,7 @@ var connector = new botbuilder.ChatConnector({
 server.post('/api/messages', connector.listen());
 
 // reply by echoing
-var sessionAddress;
+var sessionAddress, customMessage;
 
 var bot = new botbuilder.UniversalBot(connector, function(session){
     sessionAddress = session.message.address;
@@ -25,7 +25,7 @@ var bot = new botbuilder.UniversalBot(connector, function(session){
 });
 
 bot.on('typing', function(){
-    var customMessage = 'Ah ouais ?..'
+    customMessage = 'Ah ouais ?..'
     bot.send(new botbuilder.Message()
         .address(sessionAddress)
         .text(customMessage));
@@ -37,19 +37,20 @@ bot.on('conversationUpdate', function(message){
     if (message.membersAdded && message.membersAdded.length > 0) {
         var membersAdded = message.membersAdded
         .map(function (x) {
-            var isSelf = x.id === message.address.bot.id;
-            return (isSelf ? message.address.bot.name : x.name + ' (Id: ' + x.id + ')');
+            var isSelf = x.id === savedAddress.bot.id;
+            return (isSelf ? savedAddress.bot.name : x.name + ' (Id: ' + x.id + ')');
         })
-        .join(', ');
-        bot.beginDialog(message.address, '/first');    
-        customMessage = 'Bienvenue ' + membersAdded
+        .join(', ');    
+        customMessage = 'Bienvenue ' + membersAdded;
+
+        //bot.beginDialog(savedAddress, '/first');
     }
 
     if (message.membersRemoved && message.membersRemoved.length > 0) {
         var membersRemoved = message.membersRemoved
         .map(function (x) {
-            var isSelf = x.id === message.address.bot.id;
-            return (isSelf ? message.address.bot.name : x.name) || '' + ' (Id: ' + x.id + ')';
+            var isSelf = x.id === savedAddress.bot.id;
+            return (isSelf ? savedAddress.bot.name : x.name) || '' + ' (Id: ' + x.id + ')';
         })
         .join(', ');
 
@@ -83,11 +84,9 @@ bot.on('contactRelationUpdate', function(message){
        .text(customMessage));
 });
 
-bot.dialog('/first', [
-    (session) => {
-        botbuilder.Prompts.text(session, 'Avez-vous une question ?');
-    },
-    (session, results) => {
-        session.send('Je ne suis pas encore assez intélligent pour répondre à cette question :( ');
-    }
-]);
+// bot.dialog('/first', [
+//     (session) => {
+//         customMessage = 'Comment puis-je vous aider ?';
+//         botbuilder.Prompts.text(session, customMessage);
+//     }
+// ]);
