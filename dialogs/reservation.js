@@ -49,11 +49,11 @@ library.dialog('getUser', [
     },
     function (session, results) {
         session.userData.age = results.response;
-        if (session.userData.age) {
+        if (!session.userData.name || !session.userData.mail || !session.userData.age ) {
+            session.beginDialog('reservation:getUser');
+        } else {
             session.send("Nice to meet you " + session.userData.name);
             session.beginDialog('reservation:hotel');
-        } else {
-            session.send("..");
         }
     }
 ])
